@@ -233,6 +233,7 @@ test_byan_lags <- function(k) {
 
   )
 
+
   
 
   model_k <- lm(formula_k, data = df_lags)
@@ -337,15 +338,12 @@ df <- df %>%
 iv_model <- ivreg(
 
   pnr ~ qn + byan + pnr_lag + qn_lag + byan_lag |
-
     byan + pnr_lag + qn_lag + byan_lag +
-
     wayr + pmr + per + pexpr,
-
   data = df
 
 )
-summary(iv_model)
+summary(iv_model, diagnostics = TRUE)
 
 stargazer(iv_model, type = 'latex')
 
@@ -356,15 +354,6 @@ df <- df %>%
     R_lag  = lag(pexpr, 1)
   )
  
-iv_model_exp <- ivreg(
-
-  pexp ~ qn + qn_lag + exporteurope + R_lag |
-
-      qn_lag + exporteurope + R_lag + wayr + pmr + per + pexpr,
-
-  data = df
-
-)
 
 summary(iv_model_exp, diagnostics = TRUE)
 
@@ -427,20 +416,126 @@ df <- df %>%
 iv_split <- ivreg(
 
   pnr ~ qn * post1968 + byan + pnr_lag + qn_lag + byan_lag |
-
     byan + pnr_lag + qn_lag + byan_lag +
-
     wayr + pmr + per + pexpr +
-
-    post1968 +
-
-    post1968:wayr + post1968:pmr + post1968:per + post1968:pexpr,
+    post1968 + post1968:wayr + post1968:pmr + post1968:per + post1968:pexpr,
 
   data = df
 
 )
 
 summary(iv_split, diagnostics = TRUE)
+
+diag <- summary(iv_split, diagnostics = TRUE)$diagnostics
+
+diag_table <- data.frame(
+
+  Test = rownames(diag),
+
+  Statistic = round(diag[, "statistic"], 3),
+
+  P_Value = round(diag[, "p-value"], 4)
+
+)
+
+print(diag_table)
+
+extract_iv_diagnostics <- function(model, model_name) {
+
+  diag <- summary(model, diagnostics = TRUE)$diagnostics
+
+  
+
+  as.data.frame(diag) %>%
+
+    rownames_to_column("Test") %>%
+
+    mutate(
+
+      Model = model_name,
+
+      df1 = round(df1, 0),
+
+      df2 = ifelse(is.na(df2), NA, round(df2, 0)),
+
+      statistic = round(statistic, 3),
+
+      `p-value` = round(`p-value`, 4)
+
+    ) %>%
+
+    select(Model, Test, df1, df2, statistic, `p-value`)
+
+}
+
+# --- Combine diagnostics from both models ---
+
+diag_combined <- bind_rows(
+
+  extract_iv_diagnostics(iv_model, "Baseline IV"),
+
+  extract_iv_diagnostics(iv_split, "Post-1968 interaction IV")
+
+)
+
+# Optional: add stars
+
+diag_combined <- diag_combined %>%
+
+  mutate(
+
+    stars = case_when(
+
+      `p-value` < 0.01 ~ "***",
+
+      `p-value` < 0.05 ~ "**",
+
+      `p-value` < 0.10 ~ "*",
+
+      TRUE ~ ""
+
+    ),
+
+    `p-value` = paste0(formatC(`p-value`, format = "f", digits = 4), stars)
+
+  )
+
+# --- Create Typst table ---
+
+diag_typst <- diag_combined %>%
+  tt(
+    rownames = FALSE,
+    col_names = c("Model", "Test", "df1", "df2", "Statistic", "p-value"),
+    align = c("left", "left", "right", "right", "right", "right")
+  ) %>%
+  tt_style(
+    stroke = TRUE,
+    striped = TRUE,
+    inset = "5pt"
+  ) %>%
+  tt_row(
+    0,
+    bold = TRUE
+  ) %>%
+  tt_pack_rows(
+    index = c(
+      "Baseline IV" = nrow(extract_iv_diagnostics(iv_model, "Baseline IV")),
+      "Post-1968 interaction IV" = nrow(extract_iv_diagnostics(iv_split, "Post-1968 interaction IV"))
+    )
+  )
+# Print Typst markup
+diag_typst
+# Export as Typst source
+tt_save(diag_typst, "iv_diagnostics_comparison.typ")
+
+
+
+
+
+
+
+
+
 
 stargazer(iv_model, iv_split, type = 'latex')
 
@@ -478,4 +573,7 @@ conduct_model <- lm(
 )
 
 summary(conduct_model)
+
+
+
 
