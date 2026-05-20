@@ -14,14 +14,6 @@ plot_us_nr_cem
 
 ggsave('Output/plot of US v. Norway cement price.jpeg', plot = plot_us_nr_cem, width = 6.5, height = 4, units = "in", dpi = 300)
 
-df <- df %>%
-  mutate(
-    pmr = pm/cpi*100,
-    per = pe/cpi*100,
-    wayr = way/cpi*100,
-    pexpr = pexp/cpi*100,
-    pnr = pn/cpi*100,
-  )
 
 plot_demand_prod_nor <- ggplot(data = df, aes(x = year)) + 
   geom_line(aes(y = log(y), color = 'Domestic Consumption')) + 
@@ -187,7 +179,8 @@ df <- df %>%
   mutate(
     pnr_lag = lag(pnr),
     qn_lag = lag(qn),
-    byan_lag = lag(byan)
+    byan_lag = lag(byan),
+    pexpr_lag = lag(pexpr)
   )
 
 iv_model <- ivreg(
@@ -239,7 +232,9 @@ df <- df %>%
   mutate(
     log_pnr = log(pnr),
     log_qn = log(qn),
-    post1968 = ifelse(year >= 1968, 1, 0)
+    post1968 = ifelse(year >= 1968, 1, 0),
+    exp_lag = lag(exp),
+    pre1968 = ifelse(year <= 1968, 1, 0)
   )
 
 iv_split <- ivreg(
@@ -319,8 +314,11 @@ tt_save(diag_typst, "Output/iv_diagnostics_comparison.typ")
 
 stargazer(iv_model, iv_split, type = 'latex')
 
-
-
-
-
+iv_model <- ivreg(
+  pnr ~ qn + byan + pnr_lag + qn_lag + byan_lag |
+    byan + pnr_lag + qn_lag + byan_lag +
+    wayr + pmr + per + pexpr,
+  data = df %>% filter(year >= 1968)
+)
+summary(iv_model, diagnostics = TRUE)
 

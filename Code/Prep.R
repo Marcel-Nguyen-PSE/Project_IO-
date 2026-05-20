@@ -34,3 +34,12 @@ df_pct <- df %>%
   select(year, pn, pexp) %>%
   mutate(pct_change = 100 * (pexp / lag(pexp)-1)) %>%
   inner_join(df_price_us, by = 'year')
+
+df <- df %>%
+  mutate(
+    pmr = pm/cpi*100,
+    per = pe/cpi*100,
+    wayr = way/cpi*100,
+    pexpr = pexp/cpi*100,
+    pnr = pn/cpi*100,
+  )
