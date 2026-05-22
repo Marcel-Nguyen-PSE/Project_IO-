@@ -6,7 +6,7 @@ library(sandwich)
 library(stargazer)
 
 df <- read_dta(
-  "/Users/sihyunkim/Desktop/25-2/IO/Norvegian cartel/cement-steen-roller.dta"
+  "Data/cement-steen-roller.dta"
 )
 
 df <- df %>%
@@ -729,3 +729,69 @@ stargazer(cartel_lr_2c_pmc,   cartel_sr_1c_pmc,   cartel_lr_1c_pmc,
   type = 'latex')
 stargazer(cartel_sr_sac,   cartel_lr_sac,   cartel_sr_2c_sac,  type = 'latex')
 stargazer(cartel_lr_2c_sac,   cartel_sr_1c_sac,   cartel_lr_1c_sac, type = 'latex')
+
+
+df_conduct_post <- df %>%
+  mutate(
+    markup_sr = -qn * beta_sr,
+    markup_lr = -qn * beta_lr,
+    shortAC   = shortrunAC / cpi * 100,
+    gap_pexpr = pnr - pexpr,
+    gap_sac   = pnr - shortAC
+  ) %>%
+  filter(year > 1968) %>%
+  filter(
+    !is.na(markup_sr),
+    !is.na(markup_lr),
+    !is.na(gap_pexpr),
+    !is.na(gap_sac)
+  )
+
+# --- pexpr models ---
+mono_sr_pexpr     <- lm(pnr       ~     pexpr + markup_sr, data = df_conduct_post)
+mono_lr_pexpr     <- lm(pnr       ~     pexpr + markup_lr, data = df_conduct_post)
+
+mono_sr_2c_pexpr  <- lm(gap_pexpr ~ 0 + markup_sr,         data = df_conduct_post)
+mono_lr_2c_pexpr  <- lm(gap_pexpr ~ 0 + markup_lr,         data = df_conduct_post)
+
+mono_sr_1c_pexpr  <- lm(pnr       ~ 0 + pexpr + markup_sr, data = df_conduct_post)
+mono_lr_1c_pexpr  <- lm(pnr       ~ 0 + pexpr + markup_lr, data = df_conduct_post)
+
+# --- shortAC models ---
+mono_sr_sac       <- lm(pnr     ~     shortAC + markup_sr, data = df_conduct_post)
+mono_lr_sac       <- lm(pnr     ~     shortAC + markup_lr, data = df_conduct_post)
+
+mono_sr_2c_sac    <- lm(gap_sac ~ 0 + markup_sr,           data = df_conduct_post)
+mono_lr_2c_sac    <- lm(gap_sac ~ 0 + markup_lr,           data = df_conduct_post)
+
+mono_sr_1c_sac    <- lm(pnr     ~ 0 + shortAC + markup_sr, data = df_conduct_post)
+mono_lr_1c_sac    <- lm(pnr     ~ 0 + shortAC + markup_lr, data = df_conduct_post)
+
+
+# --- pexpr: free intercept ---
+stargazer(
+  mono_sr_pexpr, mono_lr_pexpr,
+  mono_sr_2c_pexpr,
+  type = "latex"
+)
+
+# --- pexpr: restricted intercept ---
+stargazer(
+  mono_lr_2c_pexpr,
+  mono_sr_1c_pexpr, mono_lr_1c_pexpr,
+  type = "latex"
+)
+
+# --- shortAC: free intercept ---
+stargazer(
+  mono_sr_sac, mono_lr_sac,
+  mono_sr_2c_sac,
+  type = "latex"
+)
+
+# --- shortAC: restricted intercept ---
+stargazer(
+  mono_lr_2c_sac,
+  mono_sr_1c_sac, mono_lr_1c_sac,
+  type = "latex"
+)

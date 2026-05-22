@@ -43,7 +43,7 @@ fs_withpexp <- lm(
 )
 
 summary(fs_withpexp)
-
+stargazer(fs_nopexp, fs_withpexp, type = 'latex')
 
 linearHypothesis(
   lm(
